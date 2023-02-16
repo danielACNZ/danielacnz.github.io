@@ -1,36 +1,83 @@
-<html>
-  <head>
-    <script src="nblite.js"></script>
-    <script src="index.js"></script>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <title>NBLite Code Demo</title>
-  </head>
-  
-  <body> 
-    <div id="nb-selector" class="container">
-        <form action="index.html" method="GET">
-            <label for="fname">URL to Notebook:</label>
-            <input type="text" id="url" name="url" required
-                value="./sample/sample.ipynb"
-            >
-            <input type="submit" value="Submit" style="display: inline;">
-        </form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" type="text/css" href="https://pyscript.net/alpha/pyscript.css">
+	<script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+	<title>Pyscript * Altair</title>
+
+	<py-env>
+- Altair
+- pandas
+- vega_datasets
+	</py-env>
+
+</head>
+<body>
+	<h1 style="font-size: 2.5em">Exploring IMDB Movies Dataset with Pyscript</h1>
+	<div id="dashboard"></div>
+
+	<py-script output="dashboard">
+import altair as alt
+from vega_datasets import data
+df=data.movies.url
+pts=alt.selection(type='single',encodings=['x'])
+<!-- brush=alt.selection_interval() -->
 
 
+rect=alt.Chart(df).mark_bar().encode(
+	alt.X('IMDB_Rating:Q',bin=True),
+	alt.Y('Rotten_Tomatoes_Rating:Q',bin=True),
+	color=alt.condition(pts,'Rotten_Tomatoes_Rating:Q',alt.value('lightgray'))
+)<!-- .add_selection(
+		brush
+	) -->
 
-        <h3>Samples</h3>
+circ = rect.mark_point().encode(
+	alt.ColorValue('lightgray'),
+	alt.Size(
+		'count()',
+		legend=alt.Legend(title='Number of Movies selected')
+	)
+).transform_filter(
+	pts
+)
 
-        <p><a href="?url=./sample/sample.ipynb">Sample Notebook</a></p>
-        <p><a href="?url=./sample/handson_ml_chapter_1.ipynb">Hands on Machine Learning Chapter 1</a> (from <a href="https://github.com/ageron/handson-ml2/blob/master/01_the_machine_learning_landscape.ipynb" target="_blank">here</a>)</p>
-    </div>
+text=alt.Chart(df).mark_text().encode(
+	y=alt.Y('row_number:Q',axis=None)
+).transform_window(
+	row_number='row_number()'
+).transform_filter(
+	pts
+).transform_window(
+	rank='rank(row_number)'
+).transform_filter(
+	alt.datum.rank < 20
+)
 
-    <div id="nb-content" class="container">
+ratings=text.encode(
+	text='Rotten_Tomatoes_Rating:Q'
+)
 
-    </div>
+moviename=text.encode(
+	text="Title:N"
+)
 
-    <p class="container" style="text-align: center;">
-        Original Author: <a href="https://gitlab.com/eduardobonet/nblite" target="_blank">Minimalistic notebooks in the browser</a>
-    </p >
-  </body>
+
+bar = alt.Chart(df).mark_bar().encode(
+	x="Major_Genre:N",
+	y="count()"
+).properties(
+	width=700,
+	height=250
+).add_selection(
+		pts
+)
+
+(rect + circ| ratings | moviename) & bar
+	</py-script>
+	
+</body>
 </html>
